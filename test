@@ -1,0 +1,3 @@
+/usr/bin/ls -ltr
+alias ls /usr/bin/ls
+ls
