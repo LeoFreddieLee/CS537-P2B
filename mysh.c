@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <string.h>
+#include <stdbool.h>
 #include <sys/wait.h>
 int main(int argc, char *argv[]) {
   char ***alias;
@@ -27,6 +28,93 @@ int main(int argc, char *argv[]) {
       }
       input[strlen(input)-1] = 0;
       const char s[2] = " "; // deliminater 
+      const char direction[2] = ">"; //redirection delimater
+      bool judge = false;
+      int count =0;
+      for(int i = 0; i < strlen(input); i++){
+        if(input[i] == direction[0]) {
+	  count++;
+          judge = true;
+        }
+      }
+      if(input[0] == direction[0] || count >1) {
+	printf("%s \n", "Redirection misformatted.");
+	write(1, "mysh> ", strlen("mysh> "));
+	continue;
+      }
+      
+      if (judge){
+	
+        char *dup0 = strdup(input);
+        char *dup1 = strdup(input);
+        //get whole direction arg
+        int tmp = 0;
+        char *sequence = strtok(dup0, direction);
+        while(sequence != NULL){
+          tmp++;
+          sequence = strtok(NULL, direction);
+        }
+        tmp++;
+        char *tmpArg[tmp];
+        char *arg = NULL;
+        int i = 0;
+        arg = strtok(dup1, direction);
+        while(arg != NULL){
+          tmpArg[i] = arg;
+          i++;
+          arg = strtok(NULL, direction);
+        }
+        tmpArg[i]=NULL;
+        //get the command's argv
+        tmp=0;
+        sequence=strtok(tmpArg[0],s );
+        while(sequence != NULL){
+          tmp++;
+          sequence = strtok(NULL, s);
+        }
+        tmp++;
+        char *comArg[tmp];
+        i=0;
+        arg = strtok(tmpArg[0], s);
+        while(arg != NULL){
+          comArg[i] = arg;
+          i++;
+          arg = strtok(NULL, s);
+        }
+        comArg[i]=NULL;
+	//get file arg
+	tmp=0;
+	sequence=strtok(tmpArg[1],s);
+  	while(sequence != NULL){
+          tmp++;
+          sequence = strtok(NULL,s);
+	}
+        tmp++;
+        char *fileArg[tmp];
+        i=0;
+        arg = strtok(tmpArg[1], s);
+        while(arg != NULL){
+          fileArg[i] = arg;
+          i++;
+          arg = strtok(NULL, s);
+            }
+	write(1, fileArg[i], strlen(fileArg[i]));
+        fileArg[i]=NULL;
+        //fork()
+        int check = fork();
+        if(check ==0){
+          fclose(stdout);
+          FILE *fp = fopen(fileArg[0], "w");
+          execv(comArg[0],comArg);
+	   fclose(fp);
+          _exit(1);
+        }else{
+          int c_wait = waitpid(check, NULL, 0);
+	  printf("mysh> child process %d (parent: %d) is terminated. (%d)\nmysh> ", c_wait, (int) getpid(), check);
+	  fflush(stdout);
+        }
+       continue; 
+      }
       char *dup = strdup(input); // dup is for argument counting
       char *dup2 = strdup(input); // dup2 is for argument values
       char *num = strtok(dup, s); // argument counting
@@ -87,18 +175,7 @@ int main(int argc, char *argv[]) {
       if (c < 0) {
         write(1, "fork failed", strlen("fork failed"));
       } else if (c == 0){ // child
-          for(int t = 0; t < myargc; t++){
-	    if(strcmp(myargv[t], ">") == 0){
-		    if(strcmp(myargv[t-1], ">") == 0||myargc-t!=3||t ==0){
-		      write(1,"Redirection misformated.\n", strlen("Redirection misformated.\n"));
-		      _exit(1);
-		    }else{
-	            printf("hit! %s", myargv[t+1]);
-		    fclose(stdout);
-		    fopen(myargv[t+1],"w");
-		    }
-	    }
-	  }
+          
           //if(strcmp(myargv[0], "alias") != 0){
             if(execv(myargv[0], myargv) == -1) {
               printf("%s: Command not found.\n", myargv[0]);
